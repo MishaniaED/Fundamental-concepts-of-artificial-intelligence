@@ -1,7 +1,6 @@
 import numpy as np
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+import sympy as sp
 
 
 def egg_holder(x):
@@ -44,22 +43,22 @@ def gradient_descent(learning_rate, max_iterations, initial_position, cost_funct
     fig = go.Figure()
     if name_of_test_func == 'Подставка для яиц':
         # Генерация сетки для визуализации функции Подставка для яиц
-        x = np.linspace(-2.0, 2.0, 100)
-        y = np.linspace(-2.0, 2.0, 100)
+        x = np.linspace(-150.0, 150.0, 300)
+        y = np.linspace(-150.0, 200.0, 300)
         X, Y = np.meshgrid(x, y)
         Z = egg_holder(np.vstack([X.ravel(), Y.ravel()]))
     else:
         # Генерация сетки для визуализации функции Розенброка
-        x = np.linspace(-2.0, 2.0, 100)
-        y = np.linspace(-2.0, 2.0, 100)
+        x = np.linspace(-3.0, 3.0, 100)
+        y = np.linspace(-3.0, 10.0, 100)
         X, Y = np.meshgrid(x, y)
         Z = rosenbrock(np.vstack([X.ravel(), Y.ravel()]))
 
-    fig.add_trace(go.Surface(x=X, y=Y, z=Z.reshape(X.shape), opacity=0.3, colorscale='viridis'))
+    fig.add_trace(go.Surface(x=X, y=Y, z=Z.reshape(X.shape), opacity=0.3, colorscale='Jet'))
 
     current_position = initial_position.astype(np.float64).copy()
 
-    for i in range(max_iterations):
+    for i in range(max_iterations+1):
         gradient = gradient_function(current_position)
         current_position -= learning_rate * gradient
 
@@ -87,28 +86,73 @@ def gradient_descent(learning_rate, max_iterations, initial_position, cost_funct
     return current_position
 
 
-# Параметры для градиентного спуска
-learning_rate = 0.001
-max_iterations = 100
-initial_position = np.array([-1.8, -1.4])
+def analytical_solution(name_of_test_func):
+    """Вычисление аналитического решения для заданных тестовых функций."""
+    if name_of_test_func == 'Подставка для яиц': # Возможно придется поменять функцию
 
-# Запуск градиентного спуска для функции Розенброка с визуализацией
-result_rosenbrock = gradient_descent(learning_rate, max_iterations, initial_position, rosenbrock, rosenbrock_gradient,
-                                     'Розенброк')
+        return np.array([0.0, 0.0])  # Пример аналитического решения для подставки для яиц
+    elif name_of_test_func == 'Розенброк':
+        x, y = sp.symbols('x y')
+        f = 100 * (y - x ** 2) ** 2 + (1 - x) ** 2
 
-print("\nРезультат оптимизации:")
-print(f"Минимум функции Розенброка достигается в точке: {result_rosenbrock}")
-print(f"Значение функции в минимуме: {rosenbrock(result_rosenbrock)}")
+        # Вычисляем градиент
+        gradient = [sp.diff(f, var) for var in (x, y)]
 
-# Параметры для градиентного спуска
-learning_rate = 0.01
-max_iterations = 100
-initial_position = np.array([200, 200])
+        # Решаем систему уравнений, приравнивая градиент к нулю
+        solution = sp.solve(gradient, (x, y))
 
-# Запуск градиентного спуска для функции подставка для яиц (Egg Holder)
-result_egg = gradient_descent(learning_rate, max_iterations, initial_position, egg_holder, egg_holder_gradient,
-                              'Подставка для яиц')
+        return solution
+    else:
+        return None
 
-print("\nРезультат оптимизации:")
-print(f"Минимум функции Швефеля достигается в точке: {result_egg}")
-print(f"Значение функции в минимуме: {egg_holder(result_egg)}")
+
+def compute_error(found_solution, analytical_solution):
+    """Вычисление погрешности между найденным и аналитическим решениями."""
+    if analytical_solution is not None:
+        error = np.linalg.norm(found_solution - analytical_solution)
+        return error
+    else:
+        return None
+
+
+def optimization_pipeline(learning_rate, max_iterations, initial_position, cost_function, gradient_function,
+                          name_of_test_func):
+    """Пайплайн тестирования алгоритма оптимизации."""
+
+    # Запуск градиентного спуска
+    found_solution = gradient_descent(learning_rate, max_iterations, initial_position, cost_function, gradient_function,
+                                      name_of_test_func)
+
+    # Вычисление аналитического решения
+    analytical_solution_point = analytical_solution(name_of_test_func)
+
+    # Вычисление погрешности
+    # error = compute_error(found_solution, analytical_solution_point)
+
+    # Вывод результатов
+    print("\nРезультат оптимизации:")
+    print(f'Минимум функции достигается в точке: {found_solution}')
+    print(
+        f"Значение функции в минимуме: {egg_holder(found_solution) if name_of_test_func == 'Подставка для яиц' else rosenbrock(found_solution)}")
+    if analytical_solution_point is not None:
+        print(f"Аналитическое решение: {analytical_solution_point}")
+        # print(f"Погрешность: {error}")
+
+
+if __name__ == "__main__":
+    # Параметры для градиентного спуска
+    learning_rate = 0.0001
+    max_iterations = 100
+    initial_position = np.array([-1.8, -1.4])
+
+    # Запуск градиентного спуска для функции Розенброка с визуализацией
+    optimization_pipeline(learning_rate, max_iterations, initial_position, rosenbrock, rosenbrock_gradient, 'Розенброк')
+
+    # Параметры для градиентного спуска
+    learning_rate = 50
+    max_iterations = 100
+    initial_position = np.array([16, 59])
+
+    # Запуск градиентного спуска для функции подставка для яиц (Egg Holder), из-за частых перегибов не удается найти
+    optimization_pipeline(learning_rate, max_iterations, initial_position, egg_holder, egg_holder_gradient,
+                          'Подставка для яиц')
